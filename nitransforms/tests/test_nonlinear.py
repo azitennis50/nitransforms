@@ -12,6 +12,7 @@ from ..io.base import TransformFileError
 from ..nonlinear import DisplacementsFieldTransform
 from ..io.itk import ITKDisplacementsField
 from ..io.afni import AFNIDisplacementsField
+from ..io.fsl import FSLDisplacementsField
 
 TESTS_BORDER_TOLERANCE = 0.05
 APPLY_NONLINEAR_CMD = {
@@ -23,6 +24,9 @@ antsApplyTransforms -d 3 -r {reference} -i {moving} \
 3dNwarpApply -nwarp {transform} -source {moving} \
 -master {reference} -interp NN -prefix resampled.nii.gz
 """.format,
+    'fsl': """\
+applywarp -i {moving} -r {reference} -o resampled.nii.gz \
+-w {transform} --interp=nn""".format,
 }
 
 
@@ -53,7 +57,7 @@ def test_itk_disp_load_intent():
 
 @pytest.mark.xfail(reason="Oblique datasets not fully implemented")
 @pytest.mark.parametrize('image_orientation', ['RAS', 'LAS', 'LPS', 'oblique'])
-@pytest.mark.parametrize('sw_tool', ['itk', 'afni'])
+@pytest.mark.parametrize('sw_tool', ['itk', 'afni', 'fsl'])
 @pytest.mark.parametrize('axis', [0, 1, 2, (0, 1), (1, 2), (0, 1, 2)])
 def test_displacements_field1(tmp_path, get_testdata, image_orientation, sw_tool, axis):
     """Check a translation-only field on one or more axes, different image orientations."""
@@ -78,6 +82,9 @@ def test_displacements_field1(tmp_path, get_testdata, image_orientation, sw_tool
     elif sw_tool == 'afni':
         xfm = DisplacementsFieldTransform(
             AFNIDisplacementsField.from_image(field))
+    elif sw_tool == 'fsl':
+        xfm = DisplacementsFieldTransform(
+            FSLDisplacementsField.from_image(field))
 
     # Then apply the transform and cross-check with software
     cmd = APPLY_NONLINEAR_CMD[sw_tool](
@@ -114,6 +121,9 @@ def test_displacements_field2(tmp_path, data_path, sw_tool):
     elif sw_tool == 'afni':
         xfm = DisplacementsFieldTransform(
             AFNIDisplacementsField.from_filename(xfm_fname))
+    elif sw_tool == 'fsl':
+        xfm = DisplacementsFieldTransform(
+            FSLDisplacementsField.from_filename(xfm_fname))
 
     # Then apply the transform and cross-check with software
     cmd = APPLY_NONLINEAR_CMD[sw_tool](
