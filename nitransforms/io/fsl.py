@@ -3,7 +3,12 @@ import os
 import numpy as np
 from nibabel.affines import voxel_sizes
 
-from .base import BaseLinearTransformList, LinearParameters, TransformFileError
+from .base import (
+    BaseLinearTransformList,
+    DisplacementsField,
+    LinearParameters,
+    TransformFileError,
+)
 
 
 class FSLLinearTransform(LinearParameters):
@@ -143,3 +148,23 @@ def _fsl_aff_adapt(space):
         swp[0, 0] = -1.0
         swp[0, 3] = (space.shape[0] - 1) * zooms[0]
     return swp, np.diag(zooms)
+
+
+class FSLDisplacementsField(DisplacementsField):
+    """A data structure representing displacements fields."""
+
+    @classmethod
+    def from_image(cls, imgobj):
+        """Import a displacements field from a NIfTI file."""
+        hdr = imgobj.header.copy()
+        shape = hdr.get_data_shape()
+
+        if len(shape) != 4 or not shape[-1] in (2, 3):
+            raise TransformFileError(
+                'Displacements field "%s" does not come from FSL.' %
+                imgobj.file_map['image'].filename)
+
+        field = np.squeeze(np.asanyarray(imgobj.dataobj))
+        field[..., (0, 1)] *= -1.0
+
+        return imgobj.__class__(_field, imgobj.affine, hdr)
