@@ -55,7 +55,7 @@ def test_itk_disp_load_intent():
     assert field.header.get_intent()[0] == 'vector'
 
 
-@pytest.mark.xfail(reason="Oblique datasets not fully implemented")
+# @pytest.mark.xfail(reason="Oblique datasets not fully implemented")
 @pytest.mark.parametrize('image_orientation', ['RAS', 'LAS', 'LPS', 'oblique'])
 @pytest.mark.parametrize('sw_tool', ['itk', 'afni', 'fsl'])
 @pytest.mark.parametrize('axis', [0, 1, 2, (0, 1), (1, 2), (0, 1, 2)])
@@ -64,7 +64,11 @@ def test_displacements_field1(tmp_path, get_testdata, image_orientation, sw_tool
     os.chdir(str(tmp_path))
     nii = get_testdata[image_orientation]
     nii.to_filename('reference.nii.gz')
-    fieldmap = np.zeros((*nii.shape[:3], 1, 3), dtype='float32')
+    if sw_tool == 'fsl':
+        fieldmap = np.zeros((*nii.shape[:3], 3), dtype='float32')
+    else:
+        fieldmap = np.zeros((*nii.shape[:3], 1, 3), dtype='float32')
+    
     fieldmap[..., axis] = -10.0
 
     _hdr = nii.header.copy()
